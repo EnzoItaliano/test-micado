@@ -3,6 +3,7 @@ from fastapi import APIRouter, Request, Body, status
 from fastapi.responses import JSONResponse
 
 from app.core.helpers.get_entities import get_entities
+from app.domain.modules.dto.get_module_schema import GetModulesDto
 
 router = APIRouter()
 
@@ -39,3 +40,13 @@ async def get_modules(request: Request, skip: int = 1, limit: int = 10):
     modules.skip(skip - 1).limit(limit)
     response = await get_entities(modules)
     return response
+
+
+# @router.get("/get2", response_model=GetModulesDto)
+# async def get_modules2(request: Request, skip: int = 1, limit: int = 10):
+#     modules = request.app.mongodb["Modules"].find()
+#     modules.skip(skip - 1).limit(limit)
+#     response = [x for x in await modules.to_list(None)]
+#     total = await request.app.mongodb["Modules"].count()
+# response = await get_entities(modules)
+# return response

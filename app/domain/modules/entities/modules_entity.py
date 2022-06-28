@@ -1,7 +1,7 @@
 from typing import List
 from app.core.common.base_entity import BaseEntity
 
-from app.modules.entities.components_entity import Components
+from app.domain.modules.entities.components_entity import Components
 
 
 class ModulesEntity(BaseEntity):
