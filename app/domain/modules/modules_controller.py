@@ -1,3 +1,4 @@
+from typing import Dict
 from fastapi import APIRouter, Request, Body, status
 from fastapi.responses import JSONResponse
 
@@ -7,7 +8,7 @@ router = APIRouter()
 
 
 @router.get("/")
-async def index() -> dict[str, str]:
+async def index() -> Dict[str, str]:
     return {
         "info": "This is the index page of Micado modules. "
         "You probably want to go to 'http://<hostname:port>/docs'.",

@@ -1,4 +1,5 @@
 from app.core.common.base_entity import BaseEntity
+from app.core.constants.enums.role_enum import Role
 
 
 class CustomersEntity(BaseEntity):
@@ -7,4 +8,4 @@ class CustomersEntity(BaseEntity):
     username: str = None
     password: str = None
     email: str = None
-    role: str = None
+    role: Role = None
