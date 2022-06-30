@@ -1,8 +1,12 @@
-from typing import Dict
-from fastapi import APIRouter, Request, Body, status
-from fastapi.responses import JSONResponse
+from typing import Dict, Optional
+from fastapi import APIRouter, HTTPException, Request, Body, status
+from fastapi.encoders import jsonable_encoder
+from app.core.common.pagination_response_schema import (
+    PaginationResponseDto,
+    create_pagination_response_dto,
+)
 
-from app.core.helpers.get_entities import get_entities
+from app.domain.modules.dto.create_module_schema import CreateModuleDto
 from app.domain.modules.dto.get_module_schema import GetModulesDto
 
 router = APIRouter()
@@ -16,37 +20,30 @@ async def index() -> Dict[str, str]:
     }
 
 
-@router.post("/add", response_description="Add new module")
-async def create_module(request: Request, content=Body(...)):
-    new_doc = dict(
-        [
-            ("name", content["name"]),
-            ("price", content["price"]),
-            ("components", content["components"]),
-        ]
-    )
+@router.post(
+    "/add",
+    response_description="Add new module",
+    response_model=GetModulesDto,
+    status_code=status.HTTP_201_CREATED,
+)
+async def create_module(request: Request, content: CreateModuleDto = Body(...)):
+    content = jsonable_encoder(content)
+    try:
+        new_module = await request.app.mongodb["Modules"].insert_one(content)
+        created_module = await request.app.mongodb["Modules"].find_one(
+            {"_id": new_module.inserted_id}
+        )
+        return created_module
+    except Exception:
+        raise HTTPException(
+            status.HTTP_400_BAD_REQUEST, "The module couldn't be created"
+        )
 
-    content = new_doc
-    new_content = await request.app.mongodb["Modules"].insert_one(content)
 
-    return JSONResponse(
-        status_code=status.HTTP_201_CREATED, content=str(new_content.inserted_id)
-    )
-
-
-@router.get("/get")
+@router.get("/get", response_model=PaginationResponseDto[GetModulesDto])
 async def get_modules(request: Request, skip: int = 1, limit: int = 10):
     modules = request.app.mongodb["Modules"].find()
-    modules.skip(skip - 1).limit(limit)
-    response = await get_entities(modules)
-    return response
-
-
-# @router.get("/get2", response_model=GetModulesDto)
-# async def get_modules2(request: Request, skip: int = 1, limit: int = 10):
-#     modules = request.app.mongodb["Modules"].find()
-#     modules.skip(skip - 1).limit(limit)
-#     response = [x for x in await modules.to_list(None)]
-#     total = await request.app.mongodb["Modules"].count()
-# response = await get_entities(modules)
-# return response
+    modules.skip((skip - 1) * limit).limit(limit)
+    response = [GetModulesDto(**x) for x in await modules.to_list(None)]
+    total = await request.app.mongodb["Modules"].count_documents({})
+    return create_pagination_response_dto(response, total, skip, limit)

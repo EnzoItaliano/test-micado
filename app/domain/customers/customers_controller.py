@@ -18,12 +18,12 @@ router = APIRouter()
     response_model=GetCustomersDto,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_client(request: Request, customer: CreateCustomersDto = Body(...)):
-    customer = jsonable_encoder(customer)
-    customer["password"] = get_password_hash(customer["password"])
-    customer["role"] = Role.CLIENT.value
+async def create_client(request: Request, content: CreateCustomersDto = Body(...)):
+    content = jsonable_encoder(content)
+    content["password"] = get_password_hash(content["password"])
+    content["role"] = Role.CLIENT.value
     try:
-        new_client = await request.app.mongodb["Customers"].insert_one(customer)
+        new_client = await request.app.mongodb["Customers"].insert_one(content)
         created_client = await request.app.mongodb["Customers"].find_one(
             {"_id": new_client.inserted_id}
         )
