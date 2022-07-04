@@ -11,4 +11,4 @@ api_router.include_router(
 api_router.include_router(
     customers_controller.router, prefix="/customers", tags=["customers"]
 )
-api_router.include_router(customers_controller.router, prefix="/auth", tags=["auth"])
+api_router.include_router(auth_controller.router, prefix="/auth", tags=["auth"])

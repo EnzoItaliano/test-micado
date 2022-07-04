@@ -1,9 +1,9 @@
 from datetime import datetime, timedelta
-
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from app.core.constants.enums.role_enum import Role
 from app.core.helpers.hash_utils import verify_password
+from app.domain.customers.dto.get_customer_schema import GetCustomersDto
 from app.domain.customers.entities.customers_entity import CustomersEntity
 from jose import JWTError, jwt
 
@@ -18,19 +18,7 @@ router = APIRouter()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/token")
 
 
-fake_users_db = {
-    "johndoe": {
-        "username": "johndoe",
-        "name": "John Doe",
-        "email": "johndoe@example.com",
-        "password": "fakehashedsecret",
-        "nif": "12345678",
-        "role": Role.CLIENT,
-    }
-}
-
-
-class Token(CustomersEntity):
+class Token(GetCustomersDto):
     access_token: str
     token_type: str
 
@@ -39,25 +27,24 @@ class TokenData(CustomersEntity):
     username: str | None = None
 
 
-class User(CustomersEntity):
+class User(GetCustomersDto):
     username: str
     email: str | None = None
-    full_name: str | None = None
-    disabled: bool | None = None
+    name: str | None = None
 
 
 class UserInDB(User):
     password: str
 
 
-def get_user(db, username: str):
-    if username in db:
-        user_dict = db[username]
-        return UserInDB(**user_dict)
+async def get_user(db, username: str):
+    user = await db.find_one({"username": username})
+    if user:
+        return UserInDB(**user)
 
 
-def authenticate_user(fake_db, username: str, password: str):
-    user = get_user(fake_db, username)
+async def authenticate_user(request, username: str, password: str):
+    user = await get_user(request.app.mongodb["Customers"], username)
     if not user:
         return False
     if not verify_password(password, user.password):
@@ -76,7 +63,7 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return encoded_jwt
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
+async def get_current_user(request: Request, token: str = Depends(oauth2_scheme)):
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -90,21 +77,25 @@ async def get_current_user(token: str = Depends(oauth2_scheme)):
         token_data = TokenData(username=username)
     except JWTError:
         raise credentials_exception
-    user = get_user(fake_users_db, username=token_data.username)
+    user = await get_user(
+        request.app.mongodb["Customers"], username=token_data.username
+    )
     if user is None:
         raise credentials_exception
     return user
 
 
 async def get_current_active_user(current_user: User = Depends(get_current_user)):
-    if current_user.disabled:
+    if current_user.deleted_at:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
 
 @router.post("/token", response_model=Token)
-async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends()):
-    user = authenticate_user(fake_users_db, form_data.username, form_data.password)
+async def login_for_access_token(
+    request: Request, form_data: OAuth2PasswordRequestForm = Depends()
+):
+    user = await authenticate_user(request, form_data.username, form_data.password)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -115,7 +106,11 @@ async def login_for_access_token(form_data: OAuth2PasswordRequestForm = Depends(
     access_token = create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
-    return {"access_token": access_token, "token_type": "bearer"}
+
+    response = Token(
+        **user.dict(by_alias=True), access_token=access_token, token_type="bearer"
+    )
+    return response
 
 
 @router.get("/me/", response_model=User)

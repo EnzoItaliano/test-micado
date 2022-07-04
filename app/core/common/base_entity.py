@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from pydantic import BaseModel, Field
 from bson import ObjectId
 
@@ -20,12 +20,21 @@ class PyObjectId(ObjectId):
 
 
 class BaseEntity(BaseModel):
-    id: PyObjectId = Field(default_factory=PyObjectId, alias="_id")
-    created_at: datetime = Field(default=datetime.now())
-    updated_at: datetime = Field(default=datetime.now())
+    created_at: datetime = Field(default=datetime.now(tz=timezone.utc))
+    updated_at: datetime = Field(default=datetime.now(tz=timezone.utc))
     deleted_at: datetime | None = Field(default=None)
 
     class Config:
         allow_population_by_field_name = True
+        arbitrary_types_allowed = True
+
+
+class BaseGetEntity(BaseModel):
+    id: PyObjectId = Field(alias="_id")
+    created_at: datetime
+    updated_at: datetime
+    deleted_at: datetime | None
+
+    class Config:
         arbitrary_types_allowed = True
         json_encoders = {ObjectId: str}
