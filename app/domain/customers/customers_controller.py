@@ -59,6 +59,5 @@ async def update_client(
             return_document=ReturnDocument.AFTER,
         )
         return updated_customer
-    except Exception as e:
-        print(e)
+    except Exception:
         raise HTTPException(status_code=404, detail=f"Customer {id} not found")
