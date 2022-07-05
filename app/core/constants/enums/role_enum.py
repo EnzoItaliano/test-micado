@@ -2,7 +2,7 @@ from enum import Enum
 
 
 class Role(Enum):
-    ADMINISTRATOR = "ADMINISTRATOR"
+    ADMIN = "ADMIN"
     CLIENT = "CLIENT"
     TECHNICIAN = "TECHNICIAN"
     VISITOR = "VISITOR"

@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 from bson import ObjectId
-from fastapi import APIRouter, HTTPException, Request, Body, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Body, status
 from fastapi.encoders import jsonable_encoder
 from pymongo import ReturnDocument
 from pymongo.errors import DuplicateKeyError
@@ -11,6 +11,7 @@ from app.domain.customers.dto.create_customer_schema import CreateCustomersDto
 from app.domain.customers.dto.get_customer_schema import GetCustomersDto
 from app.domain.customers.dto.update_customer_schema import UpdateCustomersDto
 from app.domain.customers.entities.customers_entity import CustomersEntity
+from app.infrastrucutre.auth.auth_controller import get_current_active_user
 
 router = APIRouter()
 
@@ -47,8 +48,15 @@ async def create_client(request: Request, content: CreateCustomersDto = Body(...
     response_model=GetCustomersDto,
 )
 async def update_client(
-    id: str, request: Request, customer: UpdateCustomersDto = Body(...)
+    id: str,
+    request: Request,
+    customer: UpdateCustomersDto = Body(...),
+    current_user: GetCustomersDto = Depends(get_current_active_user),
 ):
+    if id != current_user.id.__str__():
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "Id different from token"
+        )
     content = customer.dict(skip_defaults=True)
     content["updated_at"] = datetime.now(tz=timezone.utc).isoformat()
     try:

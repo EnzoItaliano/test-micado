@@ -1,11 +1,12 @@
 from typing import List
 
-from pydantic import BaseModel, Extra
+from pydantic import Extra
+from app.core.common.base_entity import BaseEntity
 
 from app.domain.modules.entities.components_entity import Components
 
 
-class CreateModuleDto(BaseModel, extra=Extra.forbid):
+class CreateModuleDto(BaseEntity, extra=Extra.forbid):
     name: str
     price: float
     components: List[Components]

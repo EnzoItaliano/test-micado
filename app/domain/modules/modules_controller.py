@@ -1,23 +1,17 @@
-from typing import Dict, Optional
-from fastapi import APIRouter, HTTPException, Request, Body, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Body, status
 from fastapi.encoders import jsonable_encoder
 from app.core.common.pagination_response_schema import (
     PaginationResponseDto,
     create_pagination_response_dto,
 )
+from app.core.constants.enums.role_enum import Role
+from app.domain.customers.dto.get_customer_schema import GetCustomersDto
 
 from app.domain.modules.dto.create_module_schema import CreateModuleDto
 from app.domain.modules.dto.get_module_schema import GetModulesDto
+from app.infrastrucutre.auth.auth_controller import get_current_active_user
 
 router = APIRouter()
-
-
-@router.get("/")
-async def index() -> Dict[str, str]:
-    return {
-        "info": "This is the index page of Micado modules. "
-        "You probably want to go to 'http://<hostname:port>/docs'.",
-    }
 
 
 @router.post(
@@ -26,7 +20,13 @@ async def index() -> Dict[str, str]:
     response_model=GetModulesDto,
     status_code=status.HTTP_201_CREATED,
 )
-async def create_module(request: Request, content: CreateModuleDto = Body(...)):
+async def create_module(
+    request: Request,
+    content: CreateModuleDto = Body(...),
+    current_user: GetCustomersDto = Depends(get_current_active_user),
+):
+    if current_user.role != Role.ADMIN:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Forbidden.")
     content = jsonable_encoder(content)
     try:
         new_module = await request.app.mongodb["Modules"].insert_one(content)
@@ -41,7 +41,12 @@ async def create_module(request: Request, content: CreateModuleDto = Body(...)):
 
 
 @router.get("/get", response_model=PaginationResponseDto[GetModulesDto])
-async def get_modules(request: Request, skip: int = 1, limit: int = 10):
+async def get_modules(
+    request: Request,
+    skip: int = 1,
+    limit: int = 10,
+    current_user: GetCustomersDto = Depends(get_current_active_user),
+):
     modules = request.app.mongodb["Modules"].find()
     modules.skip((skip - 1) * limit).limit(limit)
     response = [GetModulesDto(**x) for x in await modules.to_list(None)]
