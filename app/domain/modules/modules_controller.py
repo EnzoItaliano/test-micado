@@ -1,5 +1,4 @@
-from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Body, status
+from fastapi import APIRouter, Depends, HTTPException, Request, Body, status
 from app.core.common.pagination_response_schema import PaginationResponseDto
 from app.core.constants.enums.role_enum import Role
 from app.core.decorators.pagination_decorator import pagination_info
