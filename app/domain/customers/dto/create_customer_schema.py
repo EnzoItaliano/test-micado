@@ -11,6 +11,6 @@ class CreateCustomersDto(BaseModel, extra=Extra.forbid):
     email: str
 
     @validator("password", pre=True)
-    def parse_birthdate(cls, value):
+    def update_hash(cls, value):
         if value is not None and not is_hash(value):
             return get_password_hash(value)

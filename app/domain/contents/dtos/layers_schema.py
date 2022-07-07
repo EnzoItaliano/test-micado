@@ -1,5 +1,5 @@
 from typing import Dict, List
-from pydantic import BaseModel, Extra
+from pydantic import BaseModel, Extra, validator
 
 
 class SelectedObject(BaseModel, extra=Extra.forbid):
@@ -8,6 +8,15 @@ class SelectedObject(BaseModel, extra=Extra.forbid):
     holes: List[str] = None
     areas: List[str] = None
     items: List[str] = None
+
+
+class SelectedArrayObject(BaseModel, extra=Extra.forbid):
+    vertices: List[str] = None
+    lines: List[str] = None
+    holes: List[str] = None
+    areas: List[str] = None
+    items: List[str] = None
+    layer: str
 
 
 class ItemsObject(BaseModel, extra=Extra.forbid):
@@ -21,7 +30,7 @@ class ItemsObject(BaseModel, extra=Extra.forbid):
     visible: bool
     x: float
     y: float
-    rotation: float
+    rotation: int
 
 
 class AreasObject(BaseModel, extra=Extra.forbid):
@@ -64,6 +73,25 @@ class LinesObject(BaseModel, extra=Extra.forbid):
     holes: List[str]
 
 
+class ProjModObject(BaseModel, extra=Extra.forbid):
+    id: str
+    value: int
+
+
+class LinesArrayObject(BaseModel, extra=Extra.forbid):
+    id: str
+    type: str
+    prototype: str
+    name: str
+    misc: object
+    selected: bool
+    properties: object
+    visible: bool
+    proj_mod: List[ProjModObject]
+    vertices: List[str]
+    holes: List[str]
+
+
 class VerticesObject(BaseModel, extra=Extra.forbid):
     id: str
     type: str
@@ -91,4 +119,19 @@ class LayersObject(BaseModel, extra=Extra.forbid):
     holes: Dict[str, HolesObject]
     areas: Dict[str, AreasObject]
     items: Dict[str, ItemsObject]
+    selected: SelectedObject
+
+
+class LayersArrayObject(BaseModel, extra=Extra.forbid):
+    id: str
+    altitude: int
+    order: int
+    opacity: int
+    name: str
+    visible: bool
+    vertices: List[VerticesObject]
+    lines: List[LinesArrayObject]
+    holes: List[HolesObject]
+    areas: List[AreasObject]
+    items: List[ItemsObject]
     selected: SelectedObject
