@@ -6,7 +6,7 @@ from pydantic import BaseModel
 class GetPagination(BaseModel):
     skip: int
     limit: int
-    search: Dict
+    search: Dict | None
 
 
 def pagination_info(

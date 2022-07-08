@@ -12,19 +12,47 @@ class ContentsService:
     def __init__(self) -> None:
         pass
 
-    async def get_all(request: Request, pagination_info: GetPagination):
-        for key in ["name"]:
-            pagination_info.search[key] = {"$regex": pagination_info.search[key]}
+    def convert_model_to_get(self, content):
+        for layer in content["layers"]:
+            layer["vertices"] = {
+                vertice["id"]: vertice for vertice in layer["vertices"]
+            }
+            for line in layer["lines"]:
+                line["proj_mod"] = {x["id"]: x["value"] for x in line["proj_mod"]}
+            layer["lines"] = {line["id"]: line for line in layer["lines"]}
+            layer["areas"] = {area["id"]: area for area in layer["areas"]}
+            layer["holes"] = {hole["id"]: hole for hole in layer["holes"]}
+            layer["items"] = {item["id"]: item for item in layer["items"]}
+        content["layers"] = {layer["id"]: layer for layer in content["layers"]}
+        for group in content["groups"]:
+            group["elements"] = {x["layer"]: x for x in group["elements"]}
+        content["groups"] = {group["id"]: group for group in content["groups"]}
+        content["guides"]["horizontal"] = {
+            x["id"]: x["value"] for x in content["guides"]["horizontal"]
+        }
+        content["guides"]["vertical"] = {
+            x["id"]: x["value"] for x in content["guides"]["vertical"]
+        }
+        content["guides"]["circular"] = {
+            x["id"]: x["value"] for x in content["guides"]["circular"]
+        }
+        return GetContentDto(**content)
+
+    async def get_all(self, request: Request, pagination_info: GetPagination):
+        if pagination_info.search:
+            for key in ["name"]:
+                pagination_info.search[key] = {"$regex": pagination_info.search[key]}
         modules = request.app.mongodb["Contents"].find(pagination_info.search)
         modules.skip(pagination_info.skip).limit(pagination_info.limit)
-        response = [GetContentDto(**x) for x in await modules.to_list(None)]
+        response = [self.convert_model_to_get(x) for x in await modules.to_list(None)]
         total = await request.app.mongodb["Contents"].count_documents({})
         return create_pagination_response_dto(
             response, total, pagination_info.skip, pagination_info.limit
         )
 
-    async def get_one(request: Request, id: str):
-        return await request.app.mongodb["Contents"].find_one({"_id": ObjectId(id)})
+    async def get_one(self, request: Request, id: str):
+        response = await request.app.mongodb["Contents"].find_one({"_id": ObjectId(id)})
+        return self.convert_model_to_get(response)
 
     def convert_create_to_model(self, content):
         content.layers = list(content.layers.values())
