@@ -1,9 +1,9 @@
 from typing import Dict
 from pydantic import BaseModel, Extra
-from app.domain.contents.dtos.grids_schema import GridsObject
-from app.domain.contents.dtos.groups_schema import GroupObject
-from app.domain.contents.dtos.guides_schema import GuidesObject
-from app.domain.contents.dtos.layers_schema import LayersObject
+from app.domain.contents.dto.grids_schema import GridsObject
+from app.domain.contents.dto.groups_schema import GroupObject
+from app.domain.contents.dto.guides_schema import GuidesObject
+from app.domain.contents.dto.layers_schema import LayersObject
 
 
 class CreateContentDto(BaseModel, extra=Extra.forbid):

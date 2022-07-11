@@ -1,7 +1,7 @@
 from typing import Dict, List
 from pydantic import BaseModel, Extra
 
-from app.domain.contents.dtos.layers_schema import ProjModObject
+from app.domain.contents.dto.layers_schema import ProjModObject
 
 
 class GuidesObject(BaseModel, extra=Extra.forbid):

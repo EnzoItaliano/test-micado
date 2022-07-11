@@ -1,10 +1,13 @@
+from datetime import datetime, timezone
 from bson import ObjectId
 from fastapi import HTTPException, Request, status
 from fastapi.encoders import jsonable_encoder
+from pymongo import ReturnDocument
 from app.core.common.pagination_response_schema import create_pagination_response_dto
-from app.core.decorators.pagination_decorator import GetPagination
-from app.domain.contents.dtos.create_content_schema import CreateContentDto
-from app.domain.contents.dtos.get_content_schema import GetContentDto
+from app.core.decorators.pagination_decorator import GetPagination, pagination_info
+from app.domain.contents.dto.create_content_schema import CreateContentDto
+from app.domain.contents.dto.get_content_schema import GetContentDto
+from app.domain.contents.dto.update_content_schema import UpdateContentDto
 from app.domain.contents.entities.contents_entity import ContentEntity
 
 
@@ -41,7 +44,10 @@ class ContentsService:
     async def get_all(self, request: Request, pagination_info: GetPagination):
         if pagination_info.search:
             for key in ["name"]:
-                pagination_info.search[key] = {"$regex": pagination_info.search[key]}
+                pagination_info.search[key] = {
+                    "$regex": pagination_info.search[key],
+                    "$options": "i",
+                }
         modules = request.app.mongodb["Contents"].find(pagination_info.search)
         modules.skip(pagination_info.skip).limit(pagination_info.limit)
         response = [self.convert_model_to_get(x) for x in await modules.to_list(None)]
@@ -54,7 +60,29 @@ class ContentsService:
         response = await request.app.mongodb["Contents"].find_one({"_id": ObjectId(id)})
         return self.convert_model_to_get(response)
 
-    def convert_create_to_model(self, content):
+    async def get_all_from_user(
+        self, request: Request, id: str, pagination_info: GetPagination
+    ):
+        if pagination_info.search:
+            for key in ["name"]:
+                pagination_info.search[key] = {
+                    "$regex": pagination_info.search[key],
+                    "$options": "i",
+                }
+            pagination_info.search.update({"customer": ObjectId(id)})
+            contents = request.app.mongodb["Contents"].find(pagination_info.search)
+        else:
+            contents = request.app.mongodb["Contents"].find({"customer": ObjectId(id)})
+        contents.skip(pagination_info.skip).limit(pagination_info.limit)
+        response = [self.convert_model_to_get(x) for x in await contents.to_list(None)]
+        total = await request.app.mongodb["Contents"].count_documents(
+            {"customer": ObjectId(id)}
+        )
+        return create_pagination_response_dto(
+            response, total, pagination_info.skip, pagination_info.limit
+        )
+
+    def convert_create_to_model(self, content, create):
         content.layers = list(content.layers.values())
         for layer in content.layers:
             layer.vertices = list(layer.vertices.values())
@@ -86,14 +114,15 @@ class ContentsService:
             {"id": x, "value": content.guides.circular[x]}
             for x in content.guides.circular.keys()
         }
-        content = jsonable_encoder(content)
-        content = ContentEntity(**content)
-        content = jsonable_encoder(content)
-        content["customer"] = ObjectId(content["customer"])
+        if create:
+            content = jsonable_encoder(content)
+            content = ContentEntity(**content)
+            content = jsonable_encoder(content)
+            content["customer"] = ObjectId(content["customer"])
         return content
 
     async def create(self, request: Request, content: CreateContentDto):
-        content = self.convert_create_to_model(content)
+        content = self.convert_create_to_model(content, True)
         try:
             new_content = await request.app.mongodb["Contents"].insert_one(content)
             created_content = await request.app.mongodb["Contents"].find_one(
@@ -104,3 +133,17 @@ class ContentsService:
             raise HTTPException(
                 status.HTTP_400_BAD_REQUEST, "The content couldn't be created"
             )
+
+    async def update(self, request: Request, id: str, content: UpdateContentDto):
+        content = self.convert_create_to_model(content, False)
+        content = jsonable_encoder(content)
+        content["updated_at"] = datetime.now(tz=timezone.utc).isoformat()
+        try:
+            updated_content = await request.app.mongodb["Contents"].find_one_and_update(
+                {"_id": ObjectId(id)},
+                {"$set": content},
+                return_document=ReturnDocument.AFTER,
+            )
+            return updated_content
+        except Exception:
+            raise HTTPException(status_code=404, detail=f"Content {id} not found")

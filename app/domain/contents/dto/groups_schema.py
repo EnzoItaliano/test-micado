@@ -1,7 +1,7 @@
 from typing import Dict, List
 from pydantic import BaseModel, Extra
 
-from app.domain.contents.dtos.layers_schema import SelectedObject, SelectedArrayObject
+from app.domain.contents.dto.layers_schema import SelectedObject, SelectedArrayObject
 
 
 class GroupObject(BaseModel, extra=Extra.forbid):

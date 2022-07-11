@@ -1,8 +1,10 @@
+from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Request, Body, status
 from app.core.common.pagination_response_schema import PaginationResponseDto
 from app.core.constants.enums.role_enum import Role
 from app.core.decorators.pagination_decorator import pagination_info
 from app.domain.customers.dto.get_customer_schema import GetCustomersDto
+from app.domain.modules.dto.budget_schema import BudgetRequest, BudgetResponse
 
 from app.domain.modules.dto.create_module_schema import CreateModuleDto
 from app.domain.modules.dto.get_module_schema import GetModulesDto
@@ -35,3 +37,12 @@ async def get_modules(
     current_user: GetCustomersDto = Depends(get_current_active_user),
 ):
     return await ModulesService.get_all(request, pagination_info)
+
+
+@router.post(
+    "/budget",
+    response_description="Get Modules budget",
+    response_model=List[BudgetResponse],
+)
+async def get_budget(request: Request, content: BudgetRequest = Body(...)):
+    return await ModulesService.get_budget(request, content)
